@@ -1,0 +1,23 @@
+{
+  "name": "spotify-web-api-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rockchalkwushock/Spotify-Web-API-App.git"
+  },
+  "author": "Cody Brunner <rockchalkwushock@icloud.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rockchalkwushock/Spotify-Web-API-App/issues"
+  },
+  "homepage": "https://github.com/rockchalkwushock/Spotify-Web-API-App#readme",
+  "dependencies": {
+    "express": "^4.14.0",
+    "unirest": "^0.5.1"
+  }
+}
