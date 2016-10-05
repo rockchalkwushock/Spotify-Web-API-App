@@ -1,55 +1,78 @@
-var unirest = require('unirest');
-var express = require('express');
-var events = require('events');
-var app = express();
+import unirest from 'unirest';
+import express from 'express';
+import events from 'events';
+let app = express();
 app.use(express.static('public'));
 
-
-// Call for artist ID by name search through Spotify API
-var getFromApi = function(endpoint, args) {
-    var emitter = new events.EventEmitter();
-    unirest.get('https://api.spotify.com/v1/' + endpoint)
-           .qs(args)
-           .end(function(response) {
-                if (response.ok) {
-                    emitter.emit('end', response.body);
-                }
-                else {
-                    emitter.emit('error', response.code);
-                }
-            });
+let getFromApi = (endpoint, args) => {
+    let emitter = new events.EventEmitter();
+    unirest.get('https://api.spotify.com/v1/' + endpoint).qs(args).end((response) => {
+        response.ok
+            ? emitter.emit('end', response.body)
+            : emitter.emit('error', response.code);
+    });
     return emitter;
 };
 
-// Call for related artists using artist ID from getFromApi
-// NOTE: Use Promise!
-var getRelatedFromAPI = function(id) {
-
+let getRelatedFromAPI = (id) => {
+    let emitter = new events.EventEmitter();
+    unirest.get('https://api.spotify.com/v1/artists/' + id + '/related-artists').end((response) => {
+        response.ok
+            ? emitter.emit('end', response.body)
+            : emitter.emit('error', response.code);
+    });
+    return emitter;
 };
-// Call top tracks for each related artist using that related artist ID
-// NOTE: Use a new Promise???
-var getTopTracks = function(relID) {
 
+let getTopTracks = (relatedArtists_id) => {
+  let emitter = new events.EventEmitter();
+  unirest.get('https://api.spotify.com/v1/artists/' + relatedArtists_id + '/top-tracks?country=us').end((response) => {
+      response.ok
+          ? emitter.emit('end', response.body)
+          : emitter.emit('error', response.code);
+  });
+  return emitter;
 };
 
-
-
-app.get('/search/:name', function(req, res) {
-    var searchReq = getFromApi('search', {
+app.get('/search/:name', (req, res) => {
+    let searchReq = getFromApi('search', {
         q: req.params.name,
         limit: 1,
         type: 'artist'
     });
 
-    // Beginning of .on event callers
-    searchReq.on('end', function(item) {
-        var artist = item.artists.items[0];
-        res.json(artist);
+    searchReq.on('end', (item) => {
+        let artist = item.artists.items[0];
+        let search_id = item.artists.items[0].id;
+        let relatedArtists = getRelatedFromAPI(search_id);
+
+        relatedArtists.on('end', (item) => {
+            artist.related = item.artists;
+            let count = 0;
+            let length = artist.related.length;
+
+            artist.related.forEach((currentArtist) => {
+                let topTracks = getTopTracks(currentArtist.id);
+
+                topTracks.on('end', (item) => {
+                    currentArtist.tracks = item.tracks;
+                    count++;
+                    if (count === length) {
+                      res.json(artist);
+                    }
+                });
+                // Error Handling for topTracks
+                topTracks.on('error', (code) => {
+                    res.sendStatus(code);
+                });
+            });
+        });
+        // Error Handling for relatedArtists
+        relatedArtists.on('error', (code) => {
+            res.sendStatus(code);
+        });
     });
-
-
-    // Error Handling
-    searchReq.on('error', function(code) {
+    searchReq.on('error', (code) => {
         res.sendStatus(code);
     });
 });
